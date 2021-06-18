@@ -4,17 +4,9 @@ from numpy import linalg
 import scipy.constants as sc
 
 
-def init_state(n):
-    # initializing state
-    psi0= random.rand(n)
-    norm_psi0 = np.linalg.norm(psi0)
-    psi0= psi0/norm_psi0
-    # print(psi0)
-
-    return psi0
 
 # function that flips the i-th and j-th bits
-def flip_ij(n,i,j,k):
+def gen_X_ij(n,i,j,k):
     # initialize column number in binary - same as row number for now
     new_k_binary = np.base_repr(k, base=2)
     new_k_binary = new_k_binary.zfill(n)
@@ -51,25 +43,116 @@ def gen_H(n):
                 # print("i,j=",i,j)
                 # print("k=",k)
 
-                new_k= flip_ij(n,i,j,k)
+                new_k= gen_X_ij(n,i,j,k)
 
                 # adding the contribution of gate X_iX_j to the Hamiltonian matrix for row k
                 H[k,new_k] += 1
 
     return H # if we were to count all pairs (i,j), then the Hamiltonian would have a factor of 2
 
+# r=0 if we want uniform superposition or r=1 if we want random superposition
+def init_state(n,r):
+    if r==1:
+        # initializing state
+        psi0= random.rand(2**n)
+        norm_psi0 = np.linalg.norm(psi0)
+        psi0= psi0/norm_psi0
+        # print(psi0)
+    else:
+        psi0 = (1 / np.sqrt(2 ** n)) * np.ones((2 ** n,))
 
-def time_ev_state(n,t):
-    # psi0 = init_state(n)
-    psi0 = np.zeros((n,))
-    print(psi0)
+    return psi0
+
+def time_ev_state(n,t,psi0):
+    # just to remember that we consider hbar =1
+    hbar =1
+
+    # e-values and vectors of the Hamiltonian
     (evalues,v)= np.linalg.eig(gen_H(n))
-    exp_evalues = np.zeros((2**n,2**n))
-    for k in range(2**n):
-        exp_evalues[k][k] = np.exp(1j*t*evalues[k]/sc.hbar)
+    # print(evalues,v)
 
-    psi_t= np.matmul(v, np.matmul(exp_evalues, np.matmul(v.cong().T,psi0)))
+    # constructing diagonal matrix with e-values as entries
+    exp_evalues = np.zeros((2**n,2**n), dtype=np.complex_)
+    for k in range(2**n):
+        exp_evalues[k][k] = complex(np.exp(-1j*t*evalues[k]/hbar))
+    # print(exp_evalues)
+
+    psi_t= np.matmul(v, np.matmul(exp_evalues, np.matmul(v.conj().T,psi0)))
 
     return psi_t
 
-print(time_ev_state(3,1))
+def operator_average(n,t,psi0,op):
+    psi_t = time_ev_state(n,t,psi0)
+    return np.matmul(psi_t.conj().T,np.matmul(op,psi_t))
+
+# operator |psi0\rangle \langle psi0| to measure overlap with the initial state
+def gen_overlap_op(n,r):
+    psi0= init_state(n,r)
+    init_overlap_op = np.kron(psi0, psi0.conj().T)
+    return init_overlap_op
+
+def gen_Z_i(n,i):
+    if i == 0:
+        Z_i = np.array([[1, 0], [0, -1]])
+    else:
+        Z_i = np.identity(2)
+    for k in range(1, n):
+        if k == i:
+            new_Z_i = np.array([[1, 0], [0, -1]])
+        else:
+            new_Z_i = np.identity(2)
+        Z_i = np.kron(Z_i, new_Z_i)
+
+    return Z_i
+
+def gen_Z_tot(n):
+    Z_tot = np.zeros((2**n,2**n))
+    for i in range(n):
+        Z_tot = np.add(Z_tot,gen_Z_i(n,i))
+    return Z_tot
+
+############################
+
+for n in range(2,7):
+    t=0
+    while t<=10:
+        f = open(" ", "w")
+        f.write("n=",n,"t=",t,"op average=", operator_average(n,t,init_state(n,0),gen_overlap_op(n,0)))
+        operator_average(n,t,init_state(n,0),gen_overlap_op(n,0))
+        operator_average(n, t, init_state(n, 0), gen_Z_tot(n))
+        t += 0.5
+
+########################################################
+
+def alt_gen_X_ij(n,i,j):
+    if i==0:
+        X_ij= np.array([[0, 1], [1, 0]])
+    else:
+        X_ij = np.identity(2)
+    for k in range(1,n):
+        if k== i or k==j:
+            new_X_ij = np.array([[0, 1], [1, 0]])
+        else:
+            new_X_ij = np.identity(2)
+        X_ij = np.kron(X_ij, new_X_ij)
+
+    return X_ij
+
+# alternative function that generates the Hamiltonian
+def alt_gen_H(n):
+    # initializing empty Hamiltonian
+    H = np.zeros((2 ** n, 2 ** n), dtype=int)
+
+    for i in range(n):
+        for j in range(i+1,n):
+            H = np.add(H,alt_gen_X_ij(n,i,j))
+
+    return H
+
+##########################################################
+
+
+
+
+
+
