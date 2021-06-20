@@ -2,6 +2,7 @@ import numpy as np
 from numpy import random
 from numpy import linalg
 import scipy.constants as sc
+import csv
 
 
 
@@ -113,14 +114,43 @@ def gen_Z_tot(n):
 
 ############################
 
+
+# Opens a CSV file for writing, with the file name
+# `filename` and the header `header`.
+#
+# Returns a tuple in the form (writer object, file object).
+#
+# Don't forget to close the file object after you're done writing!
+def csv_init_write(filename, header):
+    csvfile = open(filename, 'w')
+    writer = csv.writer(csvfile)
+    writer.writerow(header)
+    return writer, csvfile
+
+
 for n in range(2,7):
-    t=0
-    while t<=10:
-        f = open(" ", "w")
-        f.write("n=",n,"t=",t,"op average=", operator_average(n,t,init_state(n,0),gen_overlap_op(n,0)))
-        operator_average(n,t,init_state(n,0),gen_overlap_op(n,0))
-        operator_average(n, t, init_state(n, 0), gen_Z_tot(n))
+    # Open the CSV files for writing
+    header = ["n", "t", "op_avg"]
+    writer_gen_overlap, gen_overlap_file = csv_init_write("gen_overlap.csv", header)
+    writer_gen_Z, gen_Z_file = csv_init_write("gen_Z.csv", header)
+
+    t = 0
+    while t <= 10:
+        # Compute the result and write to the file
+
+        ### NOTE: The `operator_average` function is not working properly
+        ###       at the moment, but I tested this with other values.
+
+        res_gen_overlap = operator_average(n,t,init_state(n,0),gen_overlap_op(n,0))
+        writer_gen_overlap.writerow([n, t, res_gen_overlap])
+
+        res_gen_Z = operator_average(n, t, init_state(n, 0), gen_Z_tot(n))
+        writer_gen_Z.writerow([n, t, res_gen_Z])
         t += 0.5
+
+    gen_overlap_file.close()
+    gen_Z_file.close()
+
 
 ########################################################
 
