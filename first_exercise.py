@@ -3,6 +3,7 @@ import csv
 import numpy as np
 from numpy import random
 from numpy import linalg
+import matplotlib.pyplot as plt
 
 # function that flips the i-th and j-th bits
 def gen_X_ij(n,i,j,k):
@@ -57,7 +58,7 @@ def time_ev_state(n,t,psi0):
     hbar =1
 
     # e-values and vectors of the Hamiltonian
-    (evalues,v)= np.linalg.eig(gen_H(n))
+    (evalues,v)= np.linalg.eigh(gen_H(n))
 
     # constructing diagonal matrix with e-values as entries
     exp_evalues = np.zeros((2**n,2**n), dtype=np.complex_)
@@ -68,15 +69,22 @@ def time_ev_state(n,t,psi0):
 
     return psi_t
 
+
 def operator_average(n,t,psi0,op):
     psi_t = time_ev_state(n,t,psi0)
     return (np.matmul(psi_t.conj().T,np.matmul(op,psi_t))).real
+
+def alt_operator_average(n,t,psi0,op):
+    psi_t = time_ev_state(n,t,psi0)
+    density_mat = np.kron(psi0,psi_t.conj().T)
+    return (np.matmul(density_mat,op).trace()).real
 
 # operator |psi0\rangle \langle psi0| to measure overlap with the initial state
 def gen_overlap_op(n,r):
     psi0= init_state(n,r)
     init_overlap_op = np.kron(psi0, psi0.conj().T)
     return init_overlap_op
+
 
 def gen_Z_i(n,i):
     if i == 0:
@@ -117,17 +125,17 @@ def gen_Z_tot(n):
 # writer_gen_overlap, gen_overlap_file = csv_init_write("gen_overlap.csv", header)
 # writer_gen_Z, gen_Z_file = csv_init_write("gen_Z.csv", header)
 #
-# for n in range(2,11):
+# for n in range(3,13):
 #     t = 0
-#     while t <= 10:
+#     while t <= 17:
 #         # Compute the result and write to the file
 #
-#         res_gen_overlap = operator_average(n,t,init_state(n,0),gen_overlap_op(n,0))
+#         res_gen_overlap = alt_operator_average(n,t,init_state(n,0),gen_overlap_op(n,0))
 #         writer_gen_overlap.writerow([n, t, res_gen_overlap])
 #
-#         res_gen_Z = operator_average(n, t, init_state(n, 0), gen_Z_tot(n))
+#         res_gen_Z = alt_operator_average(n, t, init_state(n, 0), gen_Z_tot(n))
 #         writer_gen_Z.writerow([n, t, res_gen_Z])
-#         t += 0.5
+#         t += 1
 #
 # gen_overlap_file.close()
 # gen_Z_file.close()
@@ -160,6 +168,35 @@ def alt_gen_H(n):
     return H
 
 ##########################################################
+
+# Analyzing data for overlap operator
+data_overlap = np.genfromtxt("gen_overlap.csv", delimiter=",", names=["x", "y","z"])
+
+# 2D graph with average represented by radii of circles
+area = 200*data_overlap['z'] # radii
+plt.scatter(data_overlap['x'], data_overlap['y'], s=area, alpha=0.5)
+plt.xlabel('n')
+plt.ylabel('t')
+plt.show()
+
+# # 3D graph
+# fig = plt.figure()
+# ax = fig.add_subplot(projection='3d')
+# ax.scatter(data['x'], data['y'], data['z'])
+# ax.set_xlabel('n')
+# ax.set_ylabel('t')
+# ax.set_zlabel('average')
+# plt.show()
+
+# Analyzing data for overlap operator
+data_Z = np.genfromtxt("gen_Z.csv", delimiter=",", names=["x", "y","z"])
+
+# 2D graph with average represented by radii of circles
+area = (10**17)*data_Z['z'] # radii
+plt.scatter(data_Z['x'], data_Z['y'], s=area, alpha=0.5)
+plt.xlabel('n')
+plt.ylabel('t')
+plt.show()
 
 
 
