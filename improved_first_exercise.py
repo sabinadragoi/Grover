@@ -51,7 +51,10 @@ def init_sparse_state(n,r):
 
 def init_boson_sparse_state(m,k):
     # starts in pure H.O. state k
-    return sparse.csc_matrix((np.array([1]), (np.array([k]), np.array([0]))), shape=(m, 1))
+    return sparse.csc_matrix((np.array([1]), (np.array([k]), np.array([0]))), shape=(m+1, 1))
+
+def coupled_init_state(m,k,n,r):
+    return sparse.kron(init_boson_sparse_state(m,k),init_sparse_state(n,r))
 
 
 def time_ev_sparse_state(t,psi0,H):
@@ -99,6 +102,9 @@ def gen_sparse_Z_tot(n):
         Z_tot = np.add(Z_tot,gen_sparse_Z_i(n,i))
     return Z_tot
 
+def gen_sparse_Z_tot_coupled(m,n):
+    return sparse.kron(sparse.identity(m+1),gen_sparse_Z_tot(n)/n)
+
 def low_raise_op(m): # m = max number of bosons, a = lowering operator
     a = sparse.csc_matrix((m+1, m+1))
     a_dagger = sparse.csc_matrix((m+1, m+1))
@@ -124,9 +130,6 @@ def gen_bosonic_mode(m): # m = max number of bosons
     # define a+ a
     return np.add(low_raise_op(m)[0],low_raise_op(m)[1])
 
-def coupled_init_state(m,k,n,r):
-    return sparse.kron(init_boson_sparse_state(m,k),init_sparse_state(n,r))
-
 
 def gen_sparse_sigma_i_pm(n,i): # sigma_i_plus/minus = I \tensor I ...\tensor sigma_plus/minus \tensor .. I
     # shape should be (2**n, 2**n)
@@ -151,9 +154,6 @@ def gen_sparse_sigma_i_pm(n,i): # sigma_i_plus/minus = I \tensor I ...\tensor si
 
     return (sigma_i_minus, sigma_i_plus)
 
-# (sigma_i_minus, sigma_i_plus) = gen_sparse_sigma_i_pm(3, 1)
-# print(sigma_i_plus.shape)
-
 
 def gen_sparse_H_coupled(m,n):
     # H = sum_i (a^{dagger}\sigma_i^- + a\sigma_i^+)
@@ -168,9 +168,19 @@ def gen_sparse_H_coupled(m,n):
         H = np.add(H, add)
 
     return H
+n=3
+t=2.5
+H= gen_sparse_H_coupled(1,n)
+psi0 = coupled_init_state(1,1,n,1)
+psit = sparse.linalg.expm_multiply(-1j*t*H, psi0)
+print(psit)
+
+# print(time_ev_sparse_state(t,coupled_init_state(1,1,n,1),gen_sparse_H_coupled(1,n)).real)
+# print(sparse_operator_average(t,coupled_init_state(1,1,n,1),gen_sparse_Z_tot_coupled(1,n),gen_sparse_H_coupled(1,n)))
 
 
-
+# print(sparse_operator_average(t, init_sparse_state(n, 1), gen_sparse_Z_tot(n),gen_sparse_H(n)))
+# print(time_ev_sparse_state(1,init_sparse_state(n, 1),gen_sparse_H(n)))
 
 
 ###################################################################
@@ -213,14 +223,14 @@ def gen_sparse_H_coupled(m,n):
 #
 # # Open the CSV files for writing
 # header = ["n", "t", "op_avg"]
-# writer_gen_Z, gen_Z_file = csv_init_write("gen_sparse_Z.csv", header)
+# writer_gen_Z, gen_Z_file = csv_init_write("gen_sparse_Z_couples.csv", header)
 #
 # for n in range(3,11):
 #     t = 0
 #     while t <= 17:
 #         # Compute the result and write to the file
 #
-#         res_gen_Z = sparse_operator_average(t, init_sparse_state(n, 1), gen_sparse_Z_tot(n)/n, gen_sparse_H_coupled(1,n))
+#         res_gen_Z = sparse_operator_average(t, coupled_init_state(1,1,n,1), gen_sparse_Z_tot_coupled(1,n), gen_sparse_H_coupled(1,n))
 #         writer_gen_Z.writerow([n, t, res_gen_Z])
 #         t += 0.25
 #
