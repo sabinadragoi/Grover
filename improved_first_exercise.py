@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import scipy.optimize
 from scipy.optimize import curve_fit
 from scipy import sparse
+from scipy import integrate
 from scipy.sparse import csc_matrix
 from scipy.sparse.linalg import expm, expm_multiply
 import csv
@@ -15,7 +16,9 @@ start = time.time()
 pauli_X = sparse.csc_matrix((np.array([1,1]), (np.array([0,1]), np.array([1,0]))), shape=(2, 2))
 pauli_Z = sparse.csc_matrix((np.array([1,-1]), (np.array([0,1]), np.array([0,1]))), shape=(2, 2))
 
-def gen_sparse_X_i(n,i): # X_i = I \tensor I ...\tensor X_i \tensor .. I
+def gen_sparse_X_i(n,i):
+    # X_i = I \tensor I ...\tensor X_i \tensor .. I
+    # operator that applies gate X to atom i and Identity to all others
     if i==0:
         X_i= sparse.csc_matrix(np.array([[0, 1], [1, 0]]))
     else:
@@ -31,10 +34,14 @@ def gen_sparse_X_i(n,i): # X_i = I \tensor I ...\tensor X_i \tensor .. I
 
 
 def gen_sparse_X_ij(n,i,j): # X_iX_j
+    # operator that applies gate X to atom i and atom j, and Identity to all others
     return np.multiply(gen_sparse_X_i(n,i),gen_sparse_X_i(n,j))
 
 
-def gen_sparse_H(n): # H = \sum_{i,j} X_iX_j
+def gen_sparse_H(n):
+    # H = \sum_{i,j} X_iX_j
+    # generating Hamiltonian for all-to-all interaction
+
     # initializing empty Hamiltonian
     H = sparse.csc_matrix((2 ** n, 2 ** n), dtype=int)
 
@@ -45,14 +52,22 @@ def gen_sparse_H(n): # H = \sum_{i,j} X_iX_j
     return H
 
 def init_sparse_state(n,psi0_string):
+    # generating initial state as sparse from string
+
+    # sanity check
     if n != len(psi0_string):
         print("wrong input for initial state")
 
+    # any string in binary of n characters corresponds to a base 10 integer up to 2**n, which is the initial state
     number_of_state = int(psi0_string, base =2)
 
+    # represent initial state as a column vector with just one non-zero number
     return sparse.csc_matrix((np.array([1]), (np.array([number_of_state]), np.array([0]))), shape=(2**n, 1))
 
 def init_sparse_state_old(n,r):
+    # generates initial state for the 2 extreme cases and a random superposition
+    # NO LONGER IN USE
+
     if r==1: # |1^n\rangle state
         psi0= sparse.csc_matrix((np.array([1]), (np.array([0]), np.array([0]))), shape=(2**n, 1))
     elif r==0: # |0^n\rangle state
@@ -67,10 +82,12 @@ def init_sparse_state_old(n,r):
 
 
 def init_boson_sparse_state(m,k,n):
-    # starts in pure H.O. state k
+    # generate initial state of system with m initial bosons, and m+n potential bosons at the end of the evolution
+    # starts in pure Harmonic Oscillator state k
     return sparse.csc_matrix((np.array([1]), (np.array([k]), np.array([0]))), shape=(m+n+1, 1))
 
 def coupled_init_state(m,k,n,r):
+    # generate initial state of system with m initial bosons and n atoms
     return sparse.kron(init_boson_sparse_state(m,k,n),init_sparse_state(n,r))
 
 
@@ -195,7 +212,7 @@ def gen_sparse_H_coupled(m,n):
 
 def gen_sparse_sigma_i_z(n,i): # sigma_i_plus/minus = I \tensor I ...\tensor sigma_plus/minus \tensor .. I
     # shape should be (2**n, 2**n)
-    sigma_z = np.array([[0, 1], [0, 0]])
+    sigma_z = np.array([[1, 0], [0, -1]])
 
     if i == 0:
         sigma_i_z = sparse.csc_matrix(sigma_z)
@@ -222,7 +239,7 @@ def gen_weights(n,random):
 def S_z(n,random):
     S_z = sparse.csc_matrix((2 ** n, 2 ** n ), dtype=int)
     for i in range(n):
-        S_z = np.add(S_z,gen_weights(n,random)[i]*gen_sparse_sigma_i_z(n,i))
+        S_z = np.add(S_z,gen_weights(n,random)[i]* gen_sparse_sigma_i_z(n,i))
     return S_z
 
 def gen_H_central_boson_model(m,n,random,w_rabi):
@@ -235,7 +252,7 @@ def gen_H_central_spin_model(n,random,w_rabi,delta):
     driving_H = sparse.kron( [[w_rabi * x for x in y] for y in np.array([[0,1],[1,0]])] ,sparse.identity(2**n))
     detuning_H= sparse.kron( [[delta * x for x in y] for y in np.array([[1,0],[0,-1]])] ,sparse.identity(2**n))
     pure_H = sparse.kron(np.array([[1,0],[0,-1]]), S_z(n, random))
-    # return pure_H
+
     return np.add(detuning_H,np.add(pure_H,driving_H))
 
 
@@ -358,17 +375,19 @@ def expected_value_I_z(n, psi0_string, random):  # central spin model
 # Average of I_z for central spin model
 
 ancilla_state = 0
-psi0_string = "000"
-n = len(psi0_string)
 random_number =0
 w_rabi = 0.5
-delta = expected_value_I_z(n,psi0_string,random_number)
-pairs = []
+t_max = 20
 
-for i in range(11):
-    pairs.append((w_rabi,delta-0.5+ i*0.1))
+delta_range = 0
+delta_step = 0.1
 
-t_max = 30
+psi0_string = '0000000000000000'
+n=16
+if len(psi0_string) != n:
+    print('error')
+delta = - expected_value_I_z(n, psi0_string, random_number)
+H = gen_H_central_spin_model(n, random_number, w_rabi, delta)
 
 
 # def csv_init_write(filename, header):
@@ -377,28 +396,44 @@ t_max = 30
 #     writer.writerow(header)
 #     return writer, csvfile
 #
-# # Open the CSV files for writing
-# header = ["n", "t", "w_rabi","delta","op_avg"]
-# writer_gen_Z, gen_Z_file = csv_init_write("gen_sparse_I_z_n3.csv", header)
 
-
-# for n in range(3,4):
-#     for (w_rabi,delta) in pairs:
-#         t = 0
-#         while t <= t_max:
-#
-#             init_state = init_state_central_spin(ancilla_state, n, psi0_string)
-#             H = gen_H_central_spin_model(n,random_number,w_rabi,delta)
-#             psi_t = time_ev_sparse_state(t,init_state,H)
-#             av_I_z = sparse_operator_average(t, init_state, I_z(n),H)
-#             norm_psi_t = np.linalg.norm(psi_t.toarray())
-#
-#             res_gen_Z = av_I_z/ (norm_psi_t**2)
-#             writer_gen_Z.writerow([n, t,w_rabi,delta, res_gen_Z])
-#             t += 1
+# for n in range(24,25):
+#     # Open the CSV files for writing
+#     header = ["n", "t", "w_rabi", "delta", "op_avg"]
+#     writer_gen_Z, gen_Z_file = csv_init_write("gen_sparse_I_z_n"+str(n)+".csv", header)
 #
 #
-# gen_Z_file.close()
+#     list_of_psi0_string = []
+#     for i in range(1,2): # range used to be 2**n
+#         list_of_psi0_string.append("{0:b}".format(i).zfill(n))
+#     print(list_of_psi0_string)
+#
+#     for psi0_string in list_of_psi0_string:
+#         delta = - expected_value_I_z(n, psi0_string, random_number)
+#         pairs = []
+#
+#         for i in range(int(delta_range*10+1)):
+#             pairs.append((w_rabi, delta - delta_range/2 + i * delta_step))
+#         print(pairs)
+#
+#         for (w_rabi,delta) in pairs:
+#             H = gen_H_central_spin_model(n, random_number, w_rabi, delta)
+#             print(H.toarray())
+#             t = 0
+#             while t <= t_max:
+#
+#                 init_state = init_state_central_spin(ancilla_state, n, psi0_string)
+#
+#                 psi_t = time_ev_sparse_state(t,init_state,H)
+#                 av_I_z = sparse_operator_average(t, init_state, I_z(n),H)
+#                 norm_psi_t = np.linalg.norm(psi_t.toarray())
+#
+#                 res_gen_Z = av_I_z/ (norm_psi_t**2)
+#                 writer_gen_Z.writerow([n, t,w_rabi,delta, res_gen_Z])
+#                 t += 1
+#
+#
+#     gen_Z_file.close()
 
 #####################################################
 
@@ -451,17 +486,61 @@ def spliting_data(n,w_rabi,delta,data):
     return [np.array(times),np.array(averages)]
 
 
-# pairs = [(0.5,3.05),(0.5,3.1),(0.5,3.15)]
-for n in range(3,4):
-    for (w_rabi,delta) in pairs:
+# for n in range(2,7):
+#     list_of_psi0_string = []
+#     for i in range(2**n):
+#         list_of_psi0_string.append("{0:b}".format(i).zfill(n))
+#
+#     for psi0_string in list_of_psi0_string:
+#         delta = - expected_value_I_z(n, psi0_string, random_number)
+#         pairs = []
+#
+#         for i in range(int(delta_range*10+1)):
+#             pairs.append((w_rabi, delta - delta_range/2 + i * delta_step))
+#
+#         for (w_rabi,delta) in pairs:
+#
+#             [times, averages] = spliting_data(n, w_rabi,delta, "gen_sparse_I_z_n"+str(n)+".csv")
+#
+#             H = gen_H_central_spin_model(n, random_number, w_rabi, delta)
+#             print('w,delta=', w_rabi, delta)
+#             print()
+#             print('H=', H.toarray())
+#
+#
+#             plt.plot(times,averages,label="no fit", linewidth=1)
+#             plt.scatter(times,averages)
+#             plt.title("psi0= "+psi0_string+' n='+ str(n)+' w_rabi='+str(w_rabi)+' delta='+str(delta))
+#             plt.xlabel('time')
+#             plt.ylabel('average of I_z, central spin system')
+#
+#             # plt.savefig('n='+ str(n)+'w_rabi='+str(w_rabi)+'delta='+str(delta))
+#             plt.show()
 
-        [times, averages] = spliting_data(n, w_rabi,delta, "gen_sparse_I_z_n3.csv")
+##################################################
+# Solving master's equation
 
-        plt.plot(times,averages,label="no fit", linewidth=1)
-        plt.scatter(times,averages)
-        plt.title('n='+ str(n)+'w_rabi='+str(w_rabi)+'delta='+str(delta))
-        plt.xlabel('time')
-        plt.ylabel('average of I_z, central spin system')
+def commutator(A,B): # A,B are operators
+    return np.matmul(A,B)-np.matmul(B,A)
 
-        # plt.savefig('n='+ str(n)+'w_rabi='+str(w_rabi)+'delta='+str(delta))
-        plt.show()
+def anti_commutator(A,B): # A,B are operators
+    return np.matmul(A,B)+np.matmul(B,A)
+
+def masters_eq(rho, n, random_number, w_rabi, delta):
+     # rho is the density matrix of a system of n qubits, (2^n,2^n)
+     full_rho = np.kron(np.identity(2),rho)
+     H = gen_H_central_spin_model(n, random_number, w_rabi, delta)
+     (a,a_dagger)= low_raise_op(1,n)
+     sum = 0
+     for i in range(n):
+         sum = sum + np.matmul(np.matmul(a,full_rho), a_dagger) - anti_commutator(np.matmul(a_dagger,a),full_rho)/2
+     return -1j*commutator(H,full_rho)+sum
+
+def solve_masters_eq(rho,t, n, random_number, w_rabi, delta,rho_0):
+    (times,values) = integrate.solve_ivp(masters_eq(rho, n, random_number, w_rabi, delta), (0,t), rho_0, method='RK45')
+    return (times,values)
+
+# def solve_Schrodinger(psi0_string,):
+
+
+
