@@ -613,11 +613,22 @@ def masters_eq(rho, n, random_number, w_rabi, delta):
 
 
 def solve_Schrodinger_RK45(psi0_string,n,random,w_rabi,delta,t):
+    # initial state psi0 has size (2**(n+1),1) and we convert it to a ndarray
     psi0= init_state_central_spin(int(psi0_string[0]),n,psi0_string).toarray()
+
+    # H has size (2**(n+1),2**(n+1)) and we convert it to a ndarray
     H = gen_H_central_spin_model(n,random,w_rabi,delta).toarray()
+
+    # Schrodinger's equation, which we want to be of size (2**(n+1),)
     Schrodinger_func = lambda t, psi: -1j*np.matmul(H,psi).reshape((2**(n+1),))
+
+    # assigning complex type for initial state
     new_psi0 =  np.array(psi0.reshape((2**(n+1),)),dtype = complex)
+
+    # solving the equation
     sol = integrate.solve_ivp(Schrodinger_func, [0, t], new_psi0, method='RK45',vectorized=True)
+
+    # return just the solutions for y
     return sol.y[0]
 
 psi0_string = '00'
