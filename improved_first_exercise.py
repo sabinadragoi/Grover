@@ -64,6 +64,7 @@ def init_sparse_state(n,psi0_string):
     # represent initial state as a column vector with just one non-zero number
     return sparse.csc_matrix((np.array([1]), (np.array([number_of_state]), np.array([0]))), shape=(2**n, 1))
 
+
 def init_sparse_state_old(n,r):
     # generates initial state for the 2 extreme cases and a random superposition
     # NO LONGER IN USE
@@ -596,23 +597,75 @@ def commutator(A,B): # A,B are operators
 def anti_commutator(A,B): # A,B are operators
     return np.matmul(A,B)+np.matmul(B,A)
 
-def masters_eq(rho, n, random_number, w_rabi, delta):
-     # rho is the density matrix of a system of n qubits, (2^n,2^n)
-     full_rho = np.kron(np.identity(2),rho)
-     H = gen_H_central_spin_model(n, random_number, w_rabi, delta)
-     (a,a_dagger)= low_raise_op(1,n)
-     sum = 0
+def density_matrix_from_psi(n,psi):
+    if type(psi) == str:
+        return gen_sparse_overlap_op(n,psi)
+    else:
+        return sparse.kron(psi, psi.conj().T)
+
+def gen_sparse_c_i(n,i):
+    # implementing the jump operator
+    if i == 0:
+        c_i = sparse.csc_matrix(np.array([[0, 0], [1, 0]]))
+    else:
+        c_i = sparse.identity(2)
+    for k in range(1, n):
+        if k == i:
+            new_c_i = sparse.csc_matrix(np.array([[1, 0], [0, -1]]))
+        else:
+            new_c_i = sparse.identity(2)
+        c_i = sparse.kron(c_i, new_c_i)
+
+    return c_i
+
+def Landbladian(rho, n, random_number, w_rabi, delta):
+     # rho is the density matrix of a system of n qubits + ancilla, (2^(n+1),2^(n+1))
+
+     # H = gen_H_central_spin_model(n, random_number, w_rabi, delta)
+
+     sum = np.zeros((2**(n+1),2**(n+1)), dtype = complex)
      for i in range(n):
-         sum = sum + np.matmul(np.matmul(a,full_rho), a_dagger) - anti_commutator(np.matmul(a_dagger,a),full_rho)/2
-     return -1j*commutator(H,full_rho)+sum
+         c_i = gen_sparse_c_i(n+1,i).toarray()
+         c_i_dagger = gen_sparse_c_i(n+1,i).conj().T.toarray()
+         sum = sum + np.matmul(np.matmul(c_i,rho), c_i_dagger) - anti_commutator(np.matmul(c_i_dagger,c_i),rho)/2
+     # return lambda t,rho: (-1j*commutator(H,rho)+sum).reshape((2**(2*n+2),))
+     return sum.reshape((2 ** (2 * n + 2),))
 
-# def solve_masters_eq(rho,t, n, random_number, w_rabi, delta,rho_0):
-#     (times,values) = integrate.solve_ivp(masters_eq(rho, n, random_number, w_rabi, delta), (0,t), rho_0, method='RK45')
-#     return (times,values)
+def solve_masters_eq(rho_0,n,random,w_rabi,delta,t,method_string):
+    # rho_0 must be a ndarray to reshape later
+    if 'numpy.ndarray' not in str(type(rho_0)):
+        rho_0 = rho_0.toarray()
 
+    # H has size (2**(n+1),2**(n+1)) and we convert it to a ndarray to be able to multiply it with rho
+    H = gen_H_central_spin_model(n,random,w_rabi,delta).toarray()
 
+    # Master's equation, which we want to be of size (2**(n+2),)
+    # simple_masters_eq = lambda t, rho: -1j*np.matmul(H,rho.reshape((2**(n+1),2**(n+1)))).reshape((2**(2*n+2),))
+    # Landbladian_eq = lambda t,rho: Landbladian(rho.reshape((2**(n+1),2**(n+1))), n, random, w_rabi, delta)
+    masters_eq = lambda t,rho: -1j*np.matmul(H,rho.reshape((2**(n+1),2**(n+1)))).reshape((2**(2*n+2),)) + Landbladian(rho.reshape((2**(n+1),2**(n+1))), n, random, w_rabi, delta)
 
-def solve_Schrodinger_RK45(psi0_string,n,random,w_rabi,delta,t):
+    # assigning complex type for initial state
+    new_rho_0 = np.array(rho_0.reshape((2**(2*n+2),)),dtype = complex)
+
+    # solving the equation
+    sol = integrate.solve_ivp(masters_eq, [0, t], new_rho_0, method=method_string,vectorized=False)
+
+    # return just the solutions for y
+    return sol.y.T[0]
+
+psi0_string = '00'
+n=2
+delta = 2
+t=35
+psi0= init_state_central_spin(int(psi0_string[0]),n,psi0_string)
+H = gen_H_central_spin_model(n,random_number,w_rabi,delta)
+psi_t = time_ev_sparse_state(t,psi0,H)
+rho_t = density_matrix_from_psi(n,psi_t)
+rho_0 = density_matrix_from_psi(n,psi0).toarray()
+# print(rho_t)
+print(solve_masters_eq(rho_0,n,random,w_rabi,delta,t,'DOP853'))
+
+def solve_Schrodinger(psi0_string,n,random,w_rabi,delta,t,method_string):
     # initial state psi0 has size (2**(n+1),1) and we convert it to a ndarray
     psi0= init_state_central_spin(int(psi0_string[0]),n,psi0_string).toarray()
 
@@ -626,20 +679,19 @@ def solve_Schrodinger_RK45(psi0_string,n,random,w_rabi,delta,t):
     new_psi0 =  np.array(psi0.reshape((2**(n+1),)),dtype = complex)
 
     # solving the equation
-    sol = integrate.solve_ivp(Schrodinger_func, [0, t], new_psi0, method='RK45',vectorized=True)
+    sol = integrate.solve_ivp(Schrodinger_func, [0, t], new_psi0, method=method_string,vectorized=False)
 
     # return just the solutions for y
-    return sol.y[0]
+    return sol.y.T[-1]
 
-psi0_string = '00'
-n=2
-delta = 2
-t=10
-
-
-psi0= init_state_central_spin(int(psi0_string[0]),n,psi0_string)
-H = gen_H_central_spin_model(n,random_number,w_rabi,delta)
-psi_t = time_ev_sparse_state(t,psi0,H).toarray().reshape((2**(n+1),))
-print('psi_t=',psi_t)
-print('psi_t_ODE_solution=',solve_Schrodinger_RK45(psi0_string,n,random_number,w_rabi,delta,t))
+# testing solving Schrodinger's equation
+# psi0_string = '00'
+# n=2
+# delta = 2
+# t=10
+# psi0= init_state_central_spin(int(psi0_string[0]),n,psi0_string)
+# H = gen_H_central_spin_model(n,random_number,w_rabi,delta)
+# psi_t = time_ev_sparse_state(t,psi0,H).toarray().reshape((2**(n+1),))
+# print('psi_t=',psi_t)
+# print('psi_t_ODE_solution=',solve_Schrodinger(psi0_string,n,random_number,w_rabi,delta,t,'DOP853'))
 
