@@ -1,6 +1,8 @@
 import numpy as np
 import time
 import matplotlib.pyplot as plt
+import qiskit
+from qiskit import QuantumCircuit, ClassicalRegister, QuantumRegister
 
 # def CZ(qbit1,qbit2):
 #     # qbit1 = [c_0,c_1]
@@ -49,7 +51,8 @@ def total_CZ(init_state, i1):
 
     return new_state
 
-def add_qbits(state1, state2):
+
+def add_two_qbits(state1, state2):
     # qbit = [c_0,c_1]
     n = int(np.log2(len(state1)))
     m = int(np.log2(len(state2)))
@@ -67,6 +70,27 @@ def add_qbits(state1, state2):
     return total_state
 
 
+# add_qbits(*argv)
+#    A wrapper around `add_two_qbits`.
+#    Takes an arbitrary number of arguments, and performs
+#    addition on all of them.
+#
+#    Should not be called with fewer than 2 arguments.
+#
+#    Should not be called with an extremely large number
+#    of arguments, as the recursion depth limit might be
+#    exceeded.
+
+def add_qbits(*argv):
+    assert len(argv) >= 2, ("add_qbits cannot be called "
+                            "with fewer than 2 arguments")
+
+    if len(argv) == 2:
+        return add_two_qbits(*argv)
+
+    return add_qbits(add_two_qbits(argv[0], argv[1]), *argv[2:])
+
+
 # c_0 = np.sqrt(1/2)
 # c_1 = np.sqrt(1/2)
 # d_0 = np.sqrt(1/3)
@@ -81,30 +105,26 @@ def add_qbits(state1, state2):
 # inter_state = total_CNOT(inter_state,)
 # inter_state = total_CNOT(inter_state,3,2,False)
 
-import qiskit
-from qiskit import QuantumCircuit, ClassicalRegister, QuantumRegister
-anc = QuantumRegister(2, 'a')
-qr = QuantumRegister(2, 'q')
-# cr = ClassicalRegister(1, 'c')
-cr = QuantumRegister(1, 'c')
-circuit = QuantumCircuit(anc,qr, cr)
+if __name__ == "__main__":
+    anc = QuantumRegister(2, 'a')
+    qr = QuantumRegister(2, 'q')
+    # cr = ClassicalRegister(1, 'c')
+    cr = QuantumRegister(1, 'c')
+    circuit = QuantumCircuit(anc,qr, cr)
 
-circuit.cx(qr[0],anc[0])
-circuit.cx(qr[1],anc[1])
-circuit.cz(qr[0],anc[0],label = 'CZ')
+    circuit.cx(qr[0],anc[0])
+    circuit.cx(qr[1],anc[1])
+    circuit.cz(qr[0],anc[0],label = 'CZ')
 
-circuit.cx(qr[0],cr[0])
-circuit.cx(qr[1],cr[0])
-circuit.fredkin(cr[0],anc[0],anc[1])
-circuit.cz(qr[0],anc[0],label = 'CZ')
+    circuit.cx(qr[0],cr[0])
+    circuit.cx(qr[1],cr[0])
+    circuit.fredkin(cr[0],anc[0],anc[1])
+    circuit.cz(qr[0],anc[0],label = 'CZ')
 
-circuit.barrier()
+    circuit.barrier()
 
-circuit.cx(qr[0],anc[0])
-circuit.cx(qr[1],anc[1])
+    circuit.cx(qr[0],anc[0])
+    circuit.cx(qr[1],anc[1])
 
-
-
-
-circuit.draw(output='mpl')
-plt.show()
+    circuit.draw(output='mpl')
+    plt.show()
