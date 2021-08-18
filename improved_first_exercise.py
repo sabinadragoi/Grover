@@ -316,55 +316,59 @@ def expected_value_I_z(n, psi0_string, random):  # central spin model
 ###################################################################
 # Averages of Z_tot and overlap operators for system of spins (without bosons)
 
-# def csv_init_write(filename, header):
-#     csvfile = open(filename, 'w')
-#     writer = csv.writer(csvfile)
-#     writer.writerow(header)
-#     return writer, csvfile
-#
-# # Open the CSV files for writing
-# header = ["n", "t", "op_avg"]
-# writer_gen_overlap, gen_overlap_file = csv_init_write("gen_sparse_overlap.csv", header)
-# writer_gen_Z, gen_Z_file = csv_init_write("gen_sparse_Z.csv", header)
-#
-# for n in range(3,11):
-#     t = 0
-#     while t <= 17:
-#         # Compute the result and write to the file
-#         # r=1
-#         res_gen_overlap = sparse_operator_average(t,init_sparse_state(n,1),gen_sparse_overlap_op(n,1),gen_sparse_H(n))
-#         writer_gen_overlap.writerow([n, t, res_gen_overlap])
-#
-#         res_gen_Z = sparse_operator_average(t, init_sparse_state(n, 1), gen_sparse_Z_tot(n),gen_sparse_H(n))
-#         writer_gen_Z.writerow([n, t, res_gen_Z])
-#         t += 0.25
-#
-# gen_overlap_file.close()
-# gen_Z_file.close()
+def analyze_average_Z_uncoupled():
+
+    def csv_init_write(filename, header):
+        csvfile = open(filename, 'w')
+        writer = csv.writer(csvfile)
+        writer.writerow(header)
+        return writer, csvfile
+
+    # Open the CSV files for writing
+    header = ["n", "t", "op_avg"]
+    writer_gen_overlap, gen_overlap_file = csv_init_write("gen_sparse_overlap.csv", header)
+    writer_gen_Z, gen_Z_file = csv_init_write("gen_sparse_Z.csv", header)
+
+    for n in range(3,11):
+        t = 0
+        while t <= 17:
+            # Compute the result and write to the file
+            # r=1
+            res_gen_overlap = sparse_operator_average(t,init_sparse_state(n,1),gen_sparse_overlap_op(n,1),gen_sparse_H(n))
+            writer_gen_overlap.writerow([n, t, res_gen_overlap])
+
+            res_gen_Z = sparse_operator_average(t, init_sparse_state(n, 1), gen_sparse_Z_tot(n),gen_sparse_H(n))
+            writer_gen_Z.writerow([n, t, res_gen_Z])
+            t += 0.25
+
+    gen_overlap_file.close()
+    gen_Z_file.close()
 
 #################################################
 # Average of average spin magnetization for coupled cavity
 
-# def csv_init_write(filename, header):
-#     csvfile = open(filename, 'w')
-#     writer = csv.writer(csvfile)
-#     writer.writerow(header)
-#     return writer, csvfile
-#
-# # Open the CSV files for writing
-# header = ["n", "t", "op_avg"]
-# writer_gen_Z, gen_Z_file = csv_init_write("gen_sparse_Z_coupled_1.csv", header)
-#
-# for n in range(3,11):
-#     t = 0
-#     while t <= 17:
-#         # Compute the result and write to the file
-#         # r=0, m=1,k=1
-#         res_gen_Z = sparse_operator_average(t, coupled_init_state(1,1,n,0), gen_sparse_Z_tot_coupled(1,n), gen_sparse_H_coupled(1,n))
-#         writer_gen_Z.writerow([n, t, res_gen_Z])
-#         t += 0.25
-#
-# gen_Z_file.close()
+def analyze_average_Z_coupled():
+
+    def csv_init_write(filename, header):
+        csvfile = open(filename, 'w')
+        writer = csv.writer(csvfile)
+        writer.writerow(header)
+        return writer, csvfile
+
+    # Open the CSV files for writing
+    header = ["n", "t", "op_avg"]
+    writer_gen_Z, gen_Z_file = csv_init_write("gen_sparse_Z_coupled_1.csv", header)
+
+    for n in range(3,11):
+        t = 0
+        while t <= 17:
+            # Compute the result and write to the file
+            # r=0, m=1,k=1
+            res_gen_Z = sparse_operator_average(t, coupled_init_state(1,1,n,0), gen_sparse_Z_tot_coupled(1,n), gen_sparse_H_coupled(1,n))
+            writer_gen_Z.writerow([n, t, res_gen_Z])
+            t += 0.25
+
+    gen_Z_file.close()
 
 #####################################################
 
@@ -383,6 +387,7 @@ t_max = 20
 delta_range = 2
 delta_step = 0.1
 
+# Example test:
 # psi0_string = '0000000000000000'
 # n=16
 # if len(psi0_string) != n:
@@ -390,51 +395,52 @@ delta_step = 0.1
 # delta = - expected_value_I_z(n, psi0_string, random_number)
 # H = gen_H_central_spin_model(n, random_number, w_rabi, delta)
 
+def analyze_average_Iz_central_spin():
 
-# def csv_init_write(filename, header):
-#     csvfile = open(filename, 'w')
-#     writer = csv.writer(csvfile)
-#     writer.writerow(header)
-#     return writer, csvfile
-#
-#
-# for n in range(2,3):
-#     # Open the CSV files for writing
-#     header = ["n", "t", "w_rabi", "delta", "op_avg"]
-#     writer_gen_Z, gen_Z_file = csv_init_write("gen_sparse_I_z_n"+str(n)+".csv", header)
-#
-#
-#     # list_of_psi0_string = []
-#     # for i in range(1,2): # range used to be 2**n
-#     #     list_of_psi0_string.append("{0:b}".format(i).zfill(n))
-#
-#     list_of_psi0_string = ['00']
-#
-#     for psi0_string in list_of_psi0_string:
-#         delta = - expected_value_I_z(n, psi0_string, random_number)
-#         pairs = []
-#
-#         for i in range(int(delta_range*10+1)):
-#             pairs.append((w_rabi, delta - delta_range/2 + i * delta_step))
-#
-#         for (w_rabi,delta) in pairs:
-#             H = gen_H_central_spin_model(n, random_number, w_rabi, delta)
-#             # print(H.toarray())
-#             t = 0
-#             while t <= t_max:
-#
-#                 init_state = init_state_central_spin(ancilla_state, n, psi0_string)
-#
-#                 psi_t = time_ev_sparse_state(t,init_state,H)
-#                 av_I_z = sparse_operator_average(t, init_state, I_z(n),H)
-#                 norm_psi_t = np.linalg.norm(psi_t.toarray())
-#
-#                 res_gen_Z = av_I_z/ (norm_psi_t**2)
-#                 writer_gen_Z.writerow([n, t,w_rabi,delta, res_gen_Z])
-#                 t += 1
-#
-#
-#     gen_Z_file.close()
+    def csv_init_write(filename, header):
+        csvfile = open(filename, 'w')
+        writer = csv.writer(csvfile)
+        writer.writerow(header)
+        return writer, csvfile
+
+
+    for n in range(2,3):
+        # Open the CSV files for writing
+        header = ["n", "t", "w_rabi", "delta", "op_avg"]
+        writer_gen_Z, gen_Z_file = csv_init_write("gen_sparse_I_z_n"+str(n)+".csv", header)
+
+
+        # list_of_psi0_string = []
+        # for i in range(1,2): # range used to be 2**n
+        #     list_of_psi0_string.append("{0:b}".format(i).zfill(n))
+
+        list_of_psi0_string = ['00']
+
+        for psi0_string in list_of_psi0_string:
+            delta = - expected_value_I_z(n, psi0_string, random_number)
+            pairs = []
+
+            for i in range(int(delta_range*10+1)):
+                pairs.append((w_rabi, delta - delta_range/2 + i * delta_step))
+
+            for (w_rabi,delta) in pairs:
+                H = gen_H_central_spin_model(n, random_number, w_rabi, delta)
+                # print(H.toarray())
+                t = 0
+                while t <= t_max:
+
+                    init_state = init_state_central_spin(ancilla_state, n, psi0_string)
+
+                    psi_t = time_ev_sparse_state(t,init_state,H)
+                    av_I_z = sparse_operator_average(t, init_state, I_z(n),H)
+                    norm_psi_t = np.linalg.norm(psi_t.toarray())
+
+                    res_gen_Z = av_I_z/ (norm_psi_t**2)
+                    writer_gen_Z.writerow([n, t,w_rabi,delta, res_gen_Z])
+                    t += 1
+
+
+        gen_Z_file.close()
 
 #####################################################
 
@@ -445,29 +451,32 @@ print("time=", end - start)
 #########################################################
 # Analyzing data for Coupled Boson/Spins system
 
-# data = "gen_overlap.csv" or data  = "gen_Z.csv"
-# def spliting_data(n,data):
-#     data_to_split = np.genfromtxt(data, delimiter=",", names=["x", "y", "z"])
-#     times=[]
-#     averages=[]
-#     for i in range(1,len(data_to_split)):
-#         if data_to_split[i][0]==n:
-#             averages.append(data_to_split[i][2])
-#             times.append(data_to_split[i][1])
-#
-#     return [np.array(times),np.array(averages)]
+def analyze_data_coupled_system():
+    # First choose which data to analyze:
+    # data = "gen_overlap.csv" or data  = "gen_Z.csv"
 
-# for n in range(3,11):
-#     [times, averages] = spliting_data(n, "gen_sparse_Z_coupled_1.csv")
-#
-#     plt.plot(times,averages,label="no fit", linewidth=1)
-#     plt.scatter(times,averages)
-#     plt.title('n='+ str(n))
-#     plt.xlabel('time')
-#     plt.ylabel('average of Z_tot, coupled system')
-#
-#     plt.savefig('n='+ str(n))
-#     plt.show()
+    def spliting_data(n,data):
+        data_to_split = np.genfromtxt(data, delimiter=",", names=["x", "y", "z"])
+        times=[]
+        averages=[]
+        for i in range(1,len(data_to_split)):
+            if data_to_split[i][0]==n:
+                averages.append(data_to_split[i][2])
+                times.append(data_to_split[i][1])
+
+        return [np.array(times),np.array(averages)]
+
+    for n in range(3,11):
+        [times, averages] = spliting_data(n, "gen_sparse_Z_coupled_1.csv")
+
+        plt.plot(times,averages,label="no fit", linewidth=1)
+        plt.scatter(times,averages)
+        plt.title('n='+ str(n))
+        plt.xlabel('time')
+        plt.ylabel('average of Z_tot, coupled system')
+
+        plt.savefig('n='+ str(n))
+        plt.show()
 
 #################################################
 # Analyzing data of I_z
@@ -489,38 +498,38 @@ def spliting_data(n,w_rabi,delta,data):
 #######################################################
 # Analyzing I_z(t) for different psi0
 
+def analyze_Iz():
+    for n in range(2,3):
+        list_of_psi0_string = []
+        for i in range(2**n):
+            list_of_psi0_string.append("{0:b}".format(i).zfill(n))
 
-# for n in range(2,7):
-#     list_of_psi0_string = []
-#     for i in range(2**n):
-#         list_of_psi0_string.append("{0:b}".format(i).zfill(n))
-#
-#     for psi0_string in list_of_psi0_string:
-#         delta = - expected_value_I_z(n, psi0_string, random_number)
-#         pairs = []
-#
-#         for i in range(int(delta_range*10+1)):
-#             pairs.append((w_rabi, delta - delta_range/2 + i * delta_step))
-#
-#         for (w_rabi,delta) in pairs:
-#
-#             [times, averages] = spliting_data(n, w_rabi,delta, "gen_sparse_I_z_n"+str(n)+".csv")
-#
-#             # H = gen_H_central_spin_model(n, random_number, w_rabi, delta)
-#             # print('w,delta=', w_rabi, delta)
-#             # print()
-#             # print('H=', H.toarray())
-#
-#
-#             plt.plot(times,averages,label="no fit", linewidth=1)
-#             plt.scatter(times,averages)
-#             plt.title("psi0= "+psi0_string+' n='+ str(n)+' w_rabi='+str(w_rabi)+' delta='+str(delta))
-#             plt.xlabel('time')
-#             plt.ylabel('average of I_z, central spin system')
-#
-#
-#             # plt.savefig('psi0='+psi0_string)
-#             plt.show()
+        for psi0_string in list_of_psi0_string:
+            delta = - expected_value_I_z(n, psi0_string, random_number)
+            pairs = []
+
+            for i in range(int(delta_range*10+1)):
+                pairs.append((w_rabi, delta - delta_range/2 + i * delta_step))
+
+            for (w_rabi,delta) in pairs:
+
+                [times, averages] = spliting_data(n, w_rabi,delta, "gen_sparse_I_z_n"+str(n)+".csv")
+
+                # H = gen_H_central_spin_model(n, random_number, w_rabi, delta)
+                # print('w,delta=', w_rabi, delta)
+                # print()
+                # print('H=', H.toarray())
+
+
+                plt.plot(times,averages,label="no fit", linewidth=1)
+                plt.scatter(times,averages)
+                plt.title("psi0= "+psi0_string+' n='+ str(n)+' w_rabi='+str(w_rabi)+' delta='+str(delta))
+                plt.xlabel('time')
+                plt.ylabel('average of I_z, central spin system')
+
+
+                # plt.savefig('psi0='+psi0_string)
+                plt.show()
 
 
 #################################################################
@@ -545,48 +554,49 @@ def fit_sin(tt, yy):
     fitfunc = lambda t: A * np.sin(w*t + p) + c
     return {"amp": A, "omega": w, "phase": p, "offset": c, "freq": f, "period": 1./f, "fitfunc": fitfunc, "maxcov": np.max(pcov), "rawres": (guess,popt,pcov)}
 
+def analyze_average_Iz():
+    N = 10000
+    for n in range(2,3):
+        # First choose which states to analyze
+        # list_of_psi0_string = []
+        # for i in range(2**n):
+        #     list_of_psi0_string.append("{0:b}".format(i).zfill(n))
 
-# N = 10000
-# for n in range(2,3):
-#     # list_of_psi0_string = []
-#     # for i in range(2**n):
-#     #     list_of_psi0_string.append("{0:b}".format(i).zfill(n))
-#
-#     list_of_psi0_string = ['00']
-#
-#     for psi0_string in list_of_psi0_string:
-#         averages_I_z_vs_delta = []
-#         Deltas= []
-#         delta = - expected_value_I_z(n, psi0_string, random_number)
-#         pairs = []
-#
-#         for i in range(int(delta_range*10+1)):
-#             pairs.append((w_rabi, delta - delta_range/2 + i * delta_step))
-#
-#         for (w_rabi,delta) in pairs:
-#
-#             [times, averages] = spliting_data(n, w_rabi,delta, "gen_sparse_I_z_n"+str(n)+".csv")
-#
-#             res = fit_sin(times, averages)
-#             period = '%(period)s' %res
-#             times2= np.linspace(0,4*float(period),N)
-#             sum= 0
-#             for i in range(N):
-#                 sum+= res["fitfunc"](times2)[i]
-#             average_value_I_z = sum/len(times2)
-#
-#             averages_I_z_vs_delta.append(average_value_I_z)
-#             Deltas.append(delta)
-#
-#         plt.plot(Deltas,averages_I_z_vs_delta,label="no fit", linewidth=1)
-#
-#         plt.title("psi0= "+psi0_string)
-#         plt.xlabel('delta')
-#         plt.ylabel('averages of I_z, central spin system')
-#
-#
-#         plt.savefig('averages of I_z vs delta, central spin system'+'psi0='+psi0_string)
-#         plt.show()
+        list_of_psi0_string = ['00']
+
+        for psi0_string in list_of_psi0_string:
+            averages_I_z_vs_delta = []
+            Deltas= []
+            delta = - expected_value_I_z(n, psi0_string, random_number)
+            pairs = []
+
+            for i in range(int(delta_range*10+1)):
+                pairs.append((w_rabi, delta - delta_range/2 + i * delta_step))
+
+            for (w_rabi,delta) in pairs:
+
+                [times, averages] = spliting_data(n, w_rabi,delta, "gen_sparse_I_z_n"+str(n)+".csv")
+
+                res = fit_sin(times, averages)
+                period = '%(period)s' %res
+                times2= np.linspace(0,4*float(period),N)
+                sum= 0
+                for i in range(N):
+                    sum+= res["fitfunc"](times2)[i]
+                average_value_I_z = sum/len(times2)
+
+                averages_I_z_vs_delta.append(average_value_I_z)
+                Deltas.append(delta)
+
+            plt.plot(Deltas,averages_I_z_vs_delta,label="no fit", linewidth=1)
+
+            plt.title("psi0= "+psi0_string)
+            plt.xlabel('delta')
+            plt.ylabel('averages of I_z, central spin system')
+
+
+            plt.savefig('averages of I_z vs delta, central spin system'+'psi0='+psi0_string)
+            plt.show()
 
 ##################################################
 # Solving master's equation
@@ -653,17 +663,19 @@ def solve_masters_eq(rho_0,n,random,w_rabi,delta,t,method_string):
     # return just the solutions for y
     return sol.y.T[0]
 
-psi0_string = '00'
-n=2
-delta = 2
-t=35
-psi0= init_state_central_spin(int(psi0_string[0]),n,psi0_string)
-H = gen_H_central_spin_model(n,random_number,w_rabi,delta)
-psi_t = time_ev_sparse_state(t,psi0,H)
-rho_t = density_matrix_from_psi(n,psi_t)
-rho_0 = density_matrix_from_psi(n,psi0).toarray()
-# print(rho_t)
-print(solve_masters_eq(rho_0,n,random,w_rabi,delta,t,'DOP853'))
+# Testing solving master's equation
+
+# psi0_string = '00'
+# n=2
+# delta = 2
+# t=35
+# psi0= init_state_central_spin(int(psi0_string[0]),n,psi0_string)
+# H = gen_H_central_spin_model(n,random_number,w_rabi,delta)
+# psi_t = time_ev_sparse_state(t,psi0,H)
+# rho_t = density_matrix_from_psi(n,psi_t)
+# rho_0 = density_matrix_from_psi(n,psi0).toarray()
+# # print(rho_t)
+# print(solve_masters_eq(rho_0,n,random,w_rabi,delta,t,'DOP853'))
 
 def solve_Schrodinger(psi0_string,n,random,w_rabi,delta,t,method_string):
     # initial state psi0 has size (2**(n+1),1) and we convert it to a ndarray
@@ -684,7 +696,8 @@ def solve_Schrodinger(psi0_string,n,random,w_rabi,delta,t,method_string):
     # return just the solutions for y
     return sol.y.T[-1]
 
-# testing solving Schrodinger's equation
+# Testing solving Schrodinger's equation
+
 # psi0_string = '00'
 # n=2
 # delta = 2
@@ -694,4 +707,31 @@ def solve_Schrodinger(psi0_string,n,random,w_rabi,delta,t,method_string):
 # psi_t = time_ev_sparse_state(t,psi0,H).toarray().reshape((2**(n+1),))
 # print('psi_t=',psi_t)
 # print('psi_t_ODE_solution=',solve_Schrodinger(psi0_string,n,random_number,w_rabi,delta,t,'DOP853'))
+
+def operator_norm(A,B):
+    (evalues_A, evectors_A) = np.linalg.eigh(A)
+    (evalues_B, evectors_B) = np.linalg.eigh(B)
+
+    if len(evalues_A) != len(evalues_B):
+        return 'Different number of eigenvalues.'
+    else:
+        evalues_differences = []
+        for i in range(len(evalues_A)):
+            evalues_differences.append(abs(evalues_A[i]-evalues_B[i]))
+        return max(evalues_differences)
+
+A = [[1,0],[0,1]]
+print(A[1:,1:])
+
+def compute_error(n,omega,delta,t,psi0_string):
+    # compute relative error measure by operator norm
+
+    # ideal global CZ gate
+    ideal_operator = sparse.identity(2**n)- sparse.csr_matrix((np.array([2]), (np.array([0]), np.array([0]))), shape=(2**n, 2**n))
+
+    # real gate is obtained by evolving under the central spin model Hamiltonian
+    H = gen_H_central_spin_model(n,0,w_rabi,delta)
+    sliced_H = H[1:,1:]
+    real_operator = scipy.sparse.linalg.expm(H)
+    (evalues_real_op, evectors_real_op) = np.linalg.eigh(gen_H(n))
 
