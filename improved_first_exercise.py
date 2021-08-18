@@ -442,11 +442,7 @@ def analyze_average_Iz_central_spin():
 
         gen_Z_file.close()
 
-#####################################################
 
-
-end = time.time()
-print("time=", end - start)
 
 #########################################################
 # Analyzing data for Coupled Boson/Spins system
@@ -720,18 +716,40 @@ def operator_norm(A,B):
             evalues_differences.append(abs(evalues_A[i]-evalues_B[i]))
         return max(evalues_differences)
 
-A = [[1,0],[0,1]]
-print(A[1:,1:])
+# A = np.array([[0,1,2],[3,4,5],[6,7,8]])
+# B = np.array([[0,1,2],[3,4,5],[6,9,8]])
+# print(operator_norm(A,B))
 
-def compute_error(n,omega,delta,t,psi0_string):
+def compute_error(n,w_rabi,psi0_string,random_number,t):
     # compute relative error measure by operator norm
+    # random_number = 0 if state start in equal superposition
+    # w_rabi = 0.5 is a global variable
+
+    delta = - expected_value_I_z(n,psi0_string,random_number)
 
     # ideal global CZ gate
-    ideal_operator = sparse.identity(2**n)- sparse.csr_matrix((np.array([2]), (np.array([0]), np.array([0]))), shape=(2**n, 2**n))
+    ideal_operator = np.identity(2**n)
+    ideal_operator[0][0] = -1
+    print(type(ideal_operator))
 
     # real gate is obtained by evolving under the central spin model Hamiltonian
-    H = gen_H_central_spin_model(n,0,w_rabi,delta)
-    sliced_H = H[1:,1:]
-    real_operator = scipy.sparse.linalg.expm(H)
-    (evalues_real_op, evectors_real_op) = np.linalg.eigh(gen_H(n))
+    sparse_H = gen_H_central_spin_model(n,0,w_rabi,delta)
+    full_H = sparse_H.toarray()
+    sliced_full_H = full_H[0:,0:]
+    print(type(sliced_full_H))
+    real_operator = scipy.linalg.expm(-1j*t*sliced_full_H)
+    print(type(real_operator))
 
+    return operator_norm(ideal_operator,real_operator)
+
+n = 2
+psi0_string = '00'
+t = 0
+
+print(compute_error(n,w_rabi,psi0_string,0,t))
+
+#####################################################
+
+
+end = time.time()
+print("time=", end - start)
